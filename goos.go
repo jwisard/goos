@@ -8,22 +8,22 @@ import (
 
 // AuthConfig provides values required for authenticating to an OpenStack cloud/domain/tenant
 type AuthConfig struct {
-	user       string
-	password   string
-	authURL    string
-	authDomain string
-	tenantName string
+	User       string
+	Password   string
+	AuthURL    string
+	AuthDomain string
+	TenantName string
 }
 
 // CreateProviderClient creates an authenticated ProviderClient for use by Gopher services
 func CreateProviderClient(authConfig *AuthConfig) (*gophercloud.ProviderClient, error) {
 
 	authOpts := gophercloud.AuthOptions{
-		IdentityEndpoint: authConfig.authURL,
-		Username:         authConfig.user,
-		Password:         authConfig.password,
-		TenantName:       authConfig.tenantName,
-		DomainName:       authConfig.authDomain,
+		IdentityEndpoint: authConfig.AuthURL,
+		Username:         authConfig.User,
+		Password:         authConfig.Password,
+		TenantName:       authConfig.TenantName,
+		DomainName:       authConfig.AuthDomain,
 	}
 
 	authClient, err := openstack.AuthenticatedClient(authOpts)
