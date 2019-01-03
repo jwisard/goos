@@ -1,12 +1,25 @@
 package goos
 
 import (
+	"errors"
+
 	"github.com/gophercloud/gophercloud"
 	"github.com/gophercloud/gophercloud/openstack"
 	"github.com/gophercloud/gophercloud/openstack/compute/v2/flavors"
 	"github.com/gophercloud/gophercloud/openstack/compute/v2/images"
 	logger "github.com/sirupsen/logrus"
 )
+
+// OSClient provides methods for interacting with OpenStack
+type OSClient interface {
+	RetrieveFlavors() ([]flavors.Flavor, error)
+	RetrieveImages() ([]images.Image, error)
+}
+
+type provider struct {
+	OSClient
+	providerClient *gophercloud.ProviderClient
+}
 
 // AuthConfig provides values required for authenticating to an OpenStack cloud/domain/tenant
 type AuthConfig struct {
@@ -17,8 +30,12 @@ type AuthConfig struct {
 	TenantName string
 }
 
-// CreateProviderClient creates an authenticated ProviderClient for use by Gopher services
-func CreateProviderClient(authConfig *AuthConfig) (*gophercloud.ProviderClient, error) {
+// CreateOSClient is a factory for creating a authenticated OSClient instances
+func CreateOSClient(authConfig *AuthConfig) (OSClient, error) {
+
+	if err := validateAuthConfig(authConfig); err != nil {
+		return nil, err
+	}
 
 	authOpts := gophercloud.AuthOptions{
 		IdentityEndpoint: authConfig.AuthURL,
@@ -32,15 +49,41 @@ func CreateProviderClient(authConfig *AuthConfig) (*gophercloud.ProviderClient, 
 
 	if err != nil {
 		logger.Fatal("Failed to establish an authenticated OpenStack client " + err.Error())
+		return nil, err
 	}
 
-	return authClient, err
+	return provider{providerClient: authClient}, err
+}
+
+func validateAuthConfig(authConfig *AuthConfig) error {
+
+	if authConfig.User == "" {
+		return errors.New("No goos.AuthConfig.User was provided")
+	}
+
+	if authConfig.Password == "" {
+		return errors.New("No goos.AuthConfig.Password was provided")
+	}
+
+	if authConfig.AuthURL == "" {
+		return errors.New("No goos.AuthConfig.AuthURL was provided")
+	}
+
+	if authConfig.AuthDomain == "" {
+		return errors.New("No goos.AuthConfig.AuthDomain was provided")
+	}
+
+	if authConfig.TenantName == "" {
+		return errors.New("No goos.AuthConfig.TenantName was provided")
+	}
+
+	return nil
 }
 
 // RetrieveFlavors lists all of the flavors of the project currently indicated by the given ProviderClient
-func RetrieveFlavors(provider *gophercloud.ProviderClient) ([]flavors.Flavor, error) {
+func (p provider) RetrieveFlavors() ([]flavors.Flavor, error) {
 
-	compute, err := openstack.NewComputeV2(provider, gophercloud.EndpointOpts{
+	compute, err := openstack.NewComputeV2(p.providerClient, gophercloud.EndpointOpts{
 		Region: "RegionOne",
 	})
 
@@ -49,7 +92,6 @@ func RetrieveFlavors(provider *gophercloud.ProviderClient) ([]flavors.Flavor, er
 	}
 
 	listOpts := flavors.ListOpts{
-		Limit:      20,
 		AccessType: flavors.PublicAccess,
 	}
 
@@ -67,9 +109,9 @@ func RetrieveFlavors(provider *gophercloud.ProviderClient) ([]flavors.Flavor, er
 }
 
 // RetrieveImages lists all of the images of the project currently indicated by the given ProviderClient
-func RetrieveImages(provider *gophercloud.ProviderClient) ([]images.Image, error) {
+func (p provider) RetrieveImages() ([]images.Image, error) {
 
-	compute, err := openstack.NewComputeV2(provider, gophercloud.EndpointOpts{
+	compute, err := openstack.NewComputeV2(p.providerClient, gophercloud.EndpointOpts{
 		Region: "RegionOne",
 	})
 
@@ -77,9 +119,7 @@ func RetrieveImages(provider *gophercloud.ProviderClient) ([]images.Image, error
 		return nil, err
 	}
 
-	listOpts := images.ListOpts{
-		Limit: 20,
-	}
+	listOpts := images.ListOpts{}
 
 	allPages, err := images.ListDetail(compute, listOpts).AllPages()
 	if err != nil {
