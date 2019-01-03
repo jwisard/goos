@@ -17,7 +17,6 @@ type OSClient interface {
 }
 
 type provider struct {
-	OSClient
 	providerClient *gophercloud.ProviderClient
 }
 
@@ -52,7 +51,7 @@ func CreateOSClient(authConfig *AuthConfig) (OSClient, error) {
 		return nil, err
 	}
 
-	return provider{providerClient: authClient}, err
+	return &provider{providerClient: authClient}, err
 }
 
 func validateAuthConfig(authConfig *AuthConfig) error {
@@ -81,7 +80,7 @@ func validateAuthConfig(authConfig *AuthConfig) error {
 }
 
 // RetrieveFlavors lists all of the flavors of the project currently indicated by the given ProviderClient
-func (p provider) RetrieveFlavors() ([]flavors.Flavor, error) {
+func (p *provider) RetrieveFlavors() ([]flavors.Flavor, error) {
 
 	compute, err := openstack.NewComputeV2(p.providerClient, gophercloud.EndpointOpts{
 		Region: "RegionOne",
@@ -109,7 +108,7 @@ func (p provider) RetrieveFlavors() ([]flavors.Flavor, error) {
 }
 
 // RetrieveImages lists all of the images of the project currently indicated by the given ProviderClient
-func (p provider) RetrieveImages() ([]images.Image, error) {
+func (p *provider) RetrieveImages() ([]images.Image, error) {
 
 	compute, err := openstack.NewComputeV2(p.providerClient, gophercloud.EndpointOpts{
 		Region: "RegionOne",
