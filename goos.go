@@ -51,7 +51,7 @@ func CreateOSClient(authConfig *AuthConfig) (OSClient, error) {
 	authClient, err := openstack.AuthenticatedClient(authOpts)
 
 	if err != nil {
-		logger.Fatal("Failed to establish an authenticated OpenStack client " + err.Error())
+		logger.Error("Failed to establish an authenticated OpenStack client: " + err.Error())
 		return nil, err
 	}
 
